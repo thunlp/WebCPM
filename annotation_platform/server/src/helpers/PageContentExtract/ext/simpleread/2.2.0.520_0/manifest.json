@@ -1,0 +1,83 @@
+{
+   "author": "Kenshin Wang \u003Ckenshin@ksria.com>",
+   "background": {
+      "scripts": [ "/ga.js", "/bundle/common.js", "/bundle/background.js" ]
+   },
+   "commands": {
+      "add_unreader": {
+         "description": "加入当前页面到稍后读",
+         "global": true,
+         "suggested_key": {
+            "chromeos": "Ctrl+Shift+V",
+            "default": "Ctrl+Shift+V",
+            "linux": "Ctrl+Shift+V",
+            "mac": "Command+Shift+V",
+            "windows": "Ctrl+Shift+V"
+         }
+      },
+      "focus_mode": {
+         "description": "进入聚焦模式",
+         "global": true,
+         "suggested_key": {
+            "chromeos": "Ctrl+Shift+F",
+            "default": "Ctrl+Shift+F",
+            "linux": "Ctrl+Shift+F",
+            "mac": "Command+Shift+F",
+            "windows": "Ctrl+Shift+F"
+         }
+      },
+      "open_unreader": {
+         "description": "打开稍后读",
+         "global": true,
+         "suggested_key": {
+            "chromeos": "Ctrl+Shift+C",
+            "default": "Ctrl+Shift+C",
+            "linux": "Ctrl+Shift+C",
+            "mac": "Command+Shift+C",
+            "windows": "Ctrl+Shift+C"
+         }
+      },
+      "read_mode": {
+         "description": "进入阅读模式",
+         "global": true,
+         "suggested_key": {
+            "chromeos": "Ctrl+Shift+R",
+            "default": "Ctrl+Shift+R",
+            "linux": "Ctrl+Shift+R",
+            "mac": "Command+Shift+R",
+            "windows": "Ctrl+Shift+R"
+         }
+      }
+   },
+   "content_scripts": [ {
+      "exclude_matches": [ "http://localhost/*", "https://simpread.herokuapp.com/view/*" ],
+      "js": [ "/bundle/common.js", "/bundle/vendors.js", "/bundle/contentscripts.js" ],
+      "matches": [ "http://*/*", "https://*/*", "file:///*/*.txt", "file:///*/*.md", "file:///*/*.htm*" ],
+      "run_at": "document_end"
+   } ],
+   "content_security_policy": "script-src 'self' 'unsafe-eval' https://ssl.google-analytics.com; object-src 'self'",
+   "default_locale": "en",
+   "description": "__MSG_extension_desc__",
+   "homepage_url": "https://simpread.pro",
+   "icons": {
+      "128": "assets/images/icon128.png",
+      "16": "assets/images/icon16.png",
+      "48": "assets/images/icon48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwq6wflY66UvrHUIDSM2LTZTcK2gLU5TggXXKu1237iBSCa92+DvGtFosf3QBIRHyVvHAZ0RoRs83AJt01xDU6JPWIOk7nE1QQrubYZguhd0pxvRWZyuKUELdne4zr9rx9oIipUWMP2jxvfMzZMSjuyc7bTOu54tDuFrmXzFKeLsJ3a3jqkyu3WMvVpnJrqpNqU3Izo2gKR4JOCPivuSNiftDCsHg6tOMaEhR7xNAJ+73Wl1/PPUIWUSty9zPs2G82JlwufMOYvb7xhmASADvb+hCSvtSMVlzUq8jp0SSITAaQ9nO4knnuUHp+mtjNsahHjA1WrYgDtcyhiyz0sSbhwIDAQAB",
+   "manifest_version": 2,
+   "name": "__MSG_extension_name__",
+   "offline_enabled": true,
+   "optional_permissions": [ "cookies", "https://*.youdao.com/", "downloads" ],
+   "options_page": "options/options.html",
+   "page_action": {
+      "default_icon": {
+         "16": "assets/images/icon16.png"
+      }
+   },
+   "permissions": [ "contextMenus", "tabs", "storage", "unlimitedStorage", "tts", "\u003Call_urls>" ],
+   "short_name": "SimpRead",
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "2.2.0.520",
+   "web_accessible_resources": [ "/assets/images/*", "website_list.json", "options/corb.html" ]
+}

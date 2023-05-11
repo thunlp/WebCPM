@@ -1,0 +1,42 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "pm2 start ./src/app.js",
+    "stop": "pm2 kill",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon ./src/app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@postlight/mercury-parser": "^2.2.1",
+    "axios": "^0.25.0",
+    "azure-cognitiveservices-websearch": "^2.0.0",
+    "cheerio": "^1.0.0-rc.10",
+    "got": "^11.8.2",
+    "iconv-lite": "^0.6.3",
+    "koa": "^2.13.4",
+    "koa-body": "^4.2.0",
+    "koa-bodyparser": "^4.3.0",
+    "koa-cors": "^0.0.16",
+    "koa-router": "^10.1.1",
+    "koa-static": "^5.0.0",
+    "mongodb": "^4.4.1",
+    "ms-rest-azure": "^3.0.1",
+    "node-read": "^0.1.7",
+    "node-readability": "^3.0.0",
+    "puppeteer": "^13.3.1",
+    "qs": "^6.10.3",
+    "superagent": "^7.1.1",
+    "unfluff": "^3.2.0"
+  },
+  "devDependencies": {
+    "node-bing-api": "^4.1.1",
+    "nodemon": "^2.0.15",
+    "pm2": "^5.2.2"
+  }
+}

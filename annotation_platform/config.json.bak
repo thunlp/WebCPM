@@ -1,0 +1,24 @@
+{
+  "server": {
+    "port": 3001,
+    "useDatabase": false,
+    "storeResultJSON": false,
+    "database": {
+      "url": "mongodb://localhost:27017"
+    },
+    "keys": {
+      "bingAPI": "",
+      "tianAPI": ""
+    }
+  },
+  "client": {
+    "devServer": {
+      "port": 3000
+    },
+    "env": {
+      "NEED_COVER_ACTION": false,
+      "DOMAIN": "",
+      "SEARCH_SITE_FILTER": []
+    }
+  }
+}

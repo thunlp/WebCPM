@@ -1,0 +1,15 @@
+beautifulsoup4
+bmtrain
+jieba
+numpy
+Requests
+rouge
+scikit_learn
+sentencepiece
+six
+spacy
+torch
+tqdm
+trafilatura
+transformers
+typing_extensions
