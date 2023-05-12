@@ -8,7 +8,7 @@
 
 ![paper](./assets/paper.png)
 
-<!-- *Read this in [Chinese](README_zh.md).* -->
+*Read this in [中文](README_zh.md).*
 
 ---
 
