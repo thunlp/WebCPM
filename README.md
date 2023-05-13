@@ -67,7 +67,7 @@ The downloaded files contain the following:
 Please use the following codes to split the above data into train, dev, and test set (setting --add_zhihu will add data_zhihu.json).
 
 ```bash
-cd data
+cd data/interactive_data
 python split.py --add_zhihu
 ```
 
