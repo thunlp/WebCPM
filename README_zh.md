@@ -274,12 +274,12 @@ python run_pipeline.py --data_path predictions/test.json --ckpt_path **your-chec
 如果你觉得我们的 WebCPM 有用，请参考以下引用：
 
 ```bibtex
-@misc{qin2023webcpm,
-      title={WebCPM: Interactive Web Search for Chinese Long-form Question Answering}, 
-      author={Yujia Qin and Zihan Cai and Dian Jin and Lan Yan and Shihao Liang and Kunlun Zhu and Yankai Lin and Xu Han and Ning Ding and Huadong Wang and Ruobing Xie and Fanchao Qi and Zhiyuan Liu and Maosong Sun and Jie Zhou},
-      year={2023},
-      eprint={2305.06849},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL}
+@inproceedings{qin2023webcpm,
+    title = "Exploring Mode Connectivity for Pre-trained Language Models",
+    author={Yujia Qin and Zihan Cai and Dian Jin and Lan Yan and Shihao Liang and Kunlun Zhu and Yankai Lin and Xu Han and Ning Ding and Huadong Wang and Ruobing Xie and Fanchao Qi and Zhiyuan Liu and Maosong Sun and Jie Zhou},
+    booktitle = "Proceedings of ACL 2023",
+    year = "2023",
+    publisher = "Association for Computational Linguistics",
+    url = "https://arxiv.org/abs/2305.06849",
 }
 ```
