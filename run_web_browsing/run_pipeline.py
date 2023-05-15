@@ -25,7 +25,7 @@ def model_predict_cpmb(modelcpmb, tokenizer_cpmb, question, max_abstract_num=3, 
     #     tokenizer=tokenizer_cpmb,
     # )
 
-    # max lenght 4096, avoid memory overflow
+    # max length 4096, avoid memory overflow
     MEMORY_OVERFLOW_LENGTH=3072
 
     def whether_filter_source(href, filter_hrefs):
