@@ -275,7 +275,7 @@ python run_pipeline.py --data_path predictions/test.json --ckpt_path **your-chec
 
 ```bibtex
 @inproceedings{qin2023webcpm,
-    title = "Exploring Mode Connectivity for Pre-trained Language Models",
+    title = "Interactive Web Search for Chinese Long-form Question Answering",
     author={Yujia Qin and Zihan Cai and Dian Jin and Lan Yan and Shihao Liang and Kunlun Zhu and Yankai Lin and Xu Han and Ning Ding and Huadong Wang and Ruobing Xie and Fanchao Qi and Zhiyuan Liu and Maosong Sun and Jie Zhou},
     booktitle = "Proceedings of ACL 2023",
     year = "2023",

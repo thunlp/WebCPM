@@ -73,7 +73,7 @@ def setup_model_and_optimizer(args):
 
 def initialize():
     args = get_args(finetune=True)
-    os.environ["MASTER_PORT"] = str(int(os.environ["MASTER_PORT"]) + 12)
+    # os.environ["MASTER_PORT"] = str(int(os.environ["MASTER_PORT"]) + 12)
     # bmt.init_distributed(seed=args.seed, loss_scale_factor=2, loss_scale_steps=512)
     bmt.init_distributed(seed=args.seed)
     if args.save is not None:
