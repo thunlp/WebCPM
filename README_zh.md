@@ -74,12 +74,13 @@ python split.py --add_zhihu
 ### 准备模型
 
 WebCPM基于[CPM-bee](https://github.com/OpenBMB/CPM-Live)，有**10B**以上个参数，这是社区中最大的中文预训练语言模型之一。我们使用的是CPM-bee的早期版本，被称为cpm_10b_webcpm_exp.pt。CPM-bee的最新版本将很快开源。**注意，模型检查点尚未针对任何下游任务进行微调**。要访问cpm_10b_webcpm_exp.pt，您可以在[Tsinghua Cloud](https://cloud.tsinghua.edu.cn/d/a02ae00b11434c9c8560/)下载模型参数，或运行以下脚本：
+
 ```
 cd models
-bash download_model.sh
+bash download_model_initial_model.sh
 ```
 
-上述代码将在`models`中下载10B模型。
+上述代码将在`models`中下载10B未经过微调的模型，同时我们也提供了基于pipeline的微调后的模型，请参考`download_model_pipeline_finetuned.sh`，或者您也可以在这里手动下载：[Tsinghua Cloud](https://cloud.tsinghua.edu.cn/d/3dc39eccc6c64bb58671/)。
 
 ## 训练 WebCPM
 

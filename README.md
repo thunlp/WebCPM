@@ -80,10 +80,10 @@ WebCPM is based on [CPM-bee](https://github.com/OpenBMB/CPM-Live) with up to **1
 
 ```
 cd models
-bash download_model.sh
+bash download_model_initial_model.sh
 ```
 
-The above codes will download the 10B model at `models`.
+The above codes will download the 10B (non-finetuned) model at `models`, for the finetuned pipeline model, please refer to `download_model_pipeline_finetuned.sh`, or download it manually from [Tsinghua Cloud](https://cloud.tsinghua.edu.cn/d/3dc39eccc6c64bb58671/).
 
 ## Train WebCPM
 

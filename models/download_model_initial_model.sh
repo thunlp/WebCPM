@@ -6,7 +6,7 @@ wget -O model_part3.pt https://cloud.tsinghua.edu.cn/f/5c32bbd5fb734df2847a/?dl=
 wget -O model_part4.pt https://cloud.tsinghua.edu.cn/f/148577a358da4ff5b1ea/?dl=1
 wget -O model_part5.pt https://cloud.tsinghua.edu.cn/f/d4ca2747bc87424b93c4/?dl=1
 
-python combine.py
+python combine_initial_model.py
 
 rm model_part1.pt
 rm model_part2.pt
