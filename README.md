@@ -71,7 +71,7 @@ cd data/interactive_data
 python split.py --add_zhihu
 ```
 
-In addition to the interactive web search data, we also provide the dataset needed for training the pipeline-based web search: `pipeline_data` (**110k** instances in total). All the data is created by prompting text-davinci-003 and then manually filtered by human annotators. (**Note** This part is not included in the paper, and you don't need to split it into train / dev / test.)
+In addition to the interactive web search data, we also provide the dataset needed for training the pipeline-based web search: `pipeline_data` (**110k** instances in total). All the data is created by prompting text-davinci-003 (Bing search engine is also involved) and then manually filtered by human annotators. (**Note** This part is not included in the paper, and you don't need to split it into train / dev / test.)
 
 
 ### Prepare the model
