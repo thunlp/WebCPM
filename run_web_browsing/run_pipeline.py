@@ -55,6 +55,9 @@ def model_predict_cpmb(modelcpmb, tokenizer_cpmb, question, max_abstract_num=3, 
             print("current query is: " + query + "\n")
             query = re.sub(r'\n', '', query)
             searched_results = op.search(query)
+            if len(searched_results) == 0:
+                print("no results found in Bing for query: " + query)
+                continue
             # visit 3 pages per query, you can increase the num
             max_page_per_query = min(3, op.get_page_num())
             for page_idx in range(max_page_per_query):

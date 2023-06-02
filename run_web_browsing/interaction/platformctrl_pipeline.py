@@ -45,7 +45,12 @@ class Operator():
             else:
                 raise Exception('Platform search error. Do you register your Bing API key?')
         print(f'search time:{time.time() - start_time}s')
-        return self.content[-1].data["webPages"]["value"]
+        
+        try:
+            webpage = self.content[-1].data["webPages"]["value"]
+            return webpage
+        except:
+            return []
 
     def get_page_num(self) -> int:
         return len(self.content[-1].data)

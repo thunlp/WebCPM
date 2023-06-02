@@ -76,7 +76,7 @@ In addition to the interactive web search data, we also provide the dataset need
 
 ### Prepare the model
 
-WebCPM is based on [CPM-bee](https://github.com/OpenBMB/CPM-Live) with up to **10 billion** parameters, which is one of the largest Chinese pre-trained language model in the community. We use an early version of CPM-bee, which is denoted as cpm_10b_webcpm_exp.pt. The latest version of CPM-bee will be open-source soon. **Note the model checkpoint has not been fine-tuned towards any downstream task**. To access cpm_10b_webcpm_exp.pt, you can download the model parameters at [Tsinghua Cloud](https://cloud.tsinghua.edu.cn/d/a02ae00b11434c9c8560/), or run the following script:
+WebCPM is based on [CPM-bee](https://github.com/OpenBMB/CPM-Live) with up to **10 billion** parameters, which is one of the largest Chinese pre-trained language model in the community. We use an early version of CPM-bee, which is denoted as cpm_10b_webcpm_exp.pt. The latest version of CPM-bee is hosted at [New-CPM-bee](https://github.com/OpenBMB/CPM-Bee). You may need to replace the cpm-live package for the new version. **Note the model checkpoint has not been fine-tuned towards any downstream task**. To access cpm_10b_webcpm_exp.pt, you can download the model parameters at [Tsinghua Cloud](https://cloud.tsinghua.edu.cn/d/a02ae00b11434c9c8560/), or run the following script:
 
 ```
 cd models
