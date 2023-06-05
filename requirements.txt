@@ -13,3 +13,4 @@ tqdm
 trafilatura
 transformers
 typing_extensions
+tenacity

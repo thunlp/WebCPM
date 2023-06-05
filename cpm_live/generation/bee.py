@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 import torch
 import torch.nn.functional as F
-from .generation_utils import BeamHypotheses, apply_repetition_penalty
+from .generation_utils import BeamHypotheses, apply_repetition_penalty, top_k_top_p_filtering
 from ..tokenizers.bee import CPMBeeTokenizer
 from ..models.bee import CPMBee
 from ..training_tasks.bee.pretrain import convert_data_to_id
@@ -266,7 +266,6 @@ class CPMBeeBeamSearch(CPMBeeGeneration):
         """  # noqa: E501
         # generate_length + 1 for EOS token
         max_length += 1
-
         # expand dimmension
         batch_size = model_inputs["input"].size(0)
         input: torch.Tensor = (
@@ -619,5 +618,342 @@ class CPMBeeBeamSearch(CPMBeeGeneration):
         results = []
         for sent_id, hypotheses in enumerate(generated_hyps):
             best_hyp = max(hypotheses.hyp, key=lambda x: x[0])[1]
-            results.append(best_hyp)
+            results.append(best_hyp) 
         return results
+
+class CPMBeeRandomSampling(CPMBeeGeneration):
+    def _decode(
+        self,
+        model_inputs,
+        other_info,
+        max_length=100,
+        top_k=0,
+        top_p=0.9,
+        temperature=0.9,
+        repetition_penalty=1.0,
+        repetition_window=None
+    ):
+        """
+        Top-k and top-p sampling.
+        Args:
+            model_inputs (dict): input ids
+            generate_length (int, optional, defaults to 100): maximum generation length
+            top_k (int, optional, defaults to 0): keep only top k tokens with highest probability. 0 means keeping all tokens.
+            top_p (int, optional, defaults to 0.9): keep the top tokens with cumulative probability >= top_p.
+            temperature (int, optional, defaults to 0.9): the value that can cool down the logits distribution.
+            repetition_penalty (float, optional, defaults to 1.0): repetition penalty coefficient, 1.0 means no penalty.
+            repetition_window (int, optional, defaults to None): window size of repetition penalty, None means that all output tokens are penalized.
+        """  # noqa: E501
+        # generate_length + 1 for EOS token
+        max_length += 1
+
+        input = model_inputs["input"]
+        input_sub = model_inputs["input_sub"]
+        position = model_inputs["input_pos"]
+        context = model_inputs["context"]
+        sample_ids = model_inputs["sample_idx"]
+        num_segments = model_inputs["num_segments"]
+        segment = model_inputs["segment"]
+        segment_rel_offset = model_inputs["segment_rel_offset"]
+        segment_rel = model_inputs["segment_rel"]
+        ext_table_ids = model_inputs["batch_ext_table_ids"]
+        ext_table_sub = model_inputs["batch_ext_table_sub"]
+        ext_table_ids_cpu = ext_table_ids.cpu()
+        ext_table_sub_cpu = ext_table_sub.cpu()
+        batch_size = input.size(0)
+
+        pred_start_index = input.size(-1)
+        done = [False for _ in range(batch_size)]
+        results = [None for _ in range(batch_size)]
+        for i in range(max_length):
+            if i == 0 :
+                logits, _, past_key_values = self.model.inference(
+                    input=input,
+                    input_sub=input_sub,
+                    position=position,
+                    context=context,
+                    sample_ids=sample_ids,
+                    num_segments=num_segments,
+                    segment=segment,
+                    segment_rel_offset=segment_rel_offset,
+                    segment_rel=segment_rel,
+                    ext_table_ids=ext_table_ids,
+                    ext_table_sub=ext_table_sub,
+                    past_key_values=None,
+                )
+            else:
+                logits, _, past_key_values = self.model.inference(
+                    input=input[:, -1:],
+                    input_sub=torch.zeros(
+                        batch_size, dtype=torch.int32, device="cuda"
+                    ).view(batch_size, 1),
+                    position=position,
+                    context=torch.ones(
+                        batch_size, dtype=torch.bool, device="cuda"
+                    ).view(batch_size, 1),
+                    sample_ids=torch.zeros(
+                        batch_size, dtype=torch.int32, device="cuda"
+                    ).view(batch_size, 1),
+                    num_segments=num_segments[:, -1:],
+                    segment=segment,
+                    segment_rel_offset=segment_rel_offset[:, -1:],
+                    segment_rel=segment_rel,
+                    ext_table_ids=ext_table_ids,
+                    ext_table_sub=ext_table_sub,
+                    past_key_values=past_key_values,
+                )
+
+            logits = logits[:, -1, :]
+            if i == 0:
+                logits[:, self.tokenizer.eos_id] = -float("inf")
+                logits[:, self.tokenizer.newline_id] = -float("inf")
+                segment = []
+                for idx in range(batch_size):
+                    segment.append(other_info[idx]["predict_segments"][0][0])
+                segment = torch.tensor(segment, dtype=torch.int32, device="cuda").view(batch_size, 1)
+                position = torch.zeros(
+                    batch_size, dtype=torch.int32, device="cuda"
+                ).view(batch_size, 1) - 1
+
+            apply_repetition_penalty(
+                logits,
+                batch_size,
+                1,
+                input,
+                repetition_penalty,
+                pred_start_index,
+                input.size(-1) - 1,
+                repetition_window,
+            )
+
+            logits = logits / temperature
+            logits = top_k_top_p_filtering(logits, top_k=top_k, top_p=top_p)
+
+            probs = F.softmax(logits, dim=-1)
+            raw_token = torch.multinomial(probs, num_samples=1)
+            next_token = torch.zeros(
+                batch_size, dtype=torch.int32, device="cuda"
+            ).view(batch_size, 1)
+            next_token_sub = torch.zeros(
+                batch_size, dtype=torch.int32, device="cuda"
+            ).view(batch_size, 1)
+            
+
+            for idx in range(batch_size):
+                if not done[idx] and (
+                    raw_token[idx].item() == self.tokenizer.eos_id or i == max_length - 1
+                ):
+                    done[idx] = True
+                    results[idx] = input[idx, pred_start_index:].clone().cpu().tolist()  # type: ignore # noqa: E501
+                if not done[idx]:
+                    if i == 0:
+                        next_token[idx][0] = self.tokenizer.bos_id
+                    else:
+                        next_token[idx][0] = int(raw_token[idx].item())
+                        if next_token[idx][0] >= self.tokenizer.vocab_size:
+                            id = next_token[idx][0] - self.tokenizer.vocab_size
+                            next_token[idx][0] = int(ext_table_ids_cpu[id].item())
+                            next_token_sub[idx][0] = int(ext_table_sub_cpu[id].item())
+
+            if sum(done) == batch_size:
+                break
+
+            # update input ids
+            input = torch.cat([input, next_token], dim=-1)
+            input_sub = torch.cat([input_sub, next_token_sub], dim=-1)
+            position = position[:, -1:] + 1
+        
+        result_text = []
+        for idx in range(batch_size):
+            result_text.append([(word, 1)for word in list(results[idx][1:])])
+        return result_text
+
+class CPMBeeGenerationWithBan(CPMBeeGeneration):
+    def __init__(self, model, tokenizer, feasible_state, ban_down, ban_abstract, ban_up, ban_search, ban_finish, ban_go_back, label2logit, step_id):
+        super().__init__(model, tokenizer)
+        self.feasible_state = feasible_state
+        self.ban_down = ban_down
+        self.ban_abstract = ban_abstract
+        self.ban_up = ban_up
+        self.ban_search = ban_search
+        self.ban_finish = ban_finish
+        self.ban_go_back = ban_go_back
+        self.label2logit = label2logit
+        self.step_id = step_id
+
+    def _decode(
+        self,
+        model_inputs,
+        other_info,
+        max_length=100,
+        top_k=0,
+        top_p=0.9,
+        temperature=0.9,
+        repetition_penalty=1.0,
+        repetition_window=None
+    ):
+        """
+        Top-k and top-p sampling.
+        Args:
+            model_inputs (dict): input ids
+            generate_length (int, optional, defaults to 100): maximum generation length
+            top_k (int, optional, defaults to 0): keep only top k tokens with highest probability. 0 means keeping all tokens.
+            top_p (int, optional, defaults to 0.9): keep the top tokens with cumulative probability >= top_p.
+            temperature (int, optional, defaults to 0.9): the value that can cool down the logits distribution.
+            repetition_penalty (float, optional, defaults to 1.0): repetition penalty coefficient, 1.0 means no penalty.
+            repetition_window (int, optional, defaults to None): window size of repetition penalty, None means that all output tokens are penalized.
+        """  # noqa: E501
+        # generate_length + 1 for EOS token
+        max_length += 1
+
+        input = model_inputs["input"]
+        input_sub = model_inputs["input_sub"]
+        position = model_inputs["input_pos"]
+        context = model_inputs["context"]
+        sample_ids = model_inputs["sample_idx"]
+        num_segments = model_inputs["num_segments"]
+        segment = model_inputs["segment"]
+        segment_rel_offset = model_inputs["segment_rel_offset"]
+        segment_rel = model_inputs["segment_rel"]
+        ext_table_ids = model_inputs["batch_ext_table_ids"]
+        ext_table_sub = model_inputs["batch_ext_table_sub"]
+        ext_table_ids_cpu = ext_table_ids.cpu()
+        ext_table_sub_cpu = ext_table_sub.cpu()
+        batch_size = input.size(0)
+
+        pred_start_index = input.size(-1)
+        done = [False for _ in range(batch_size)]
+        results = [None for _ in range(batch_size)]
+        for i in range(max_length):
+            if i == 0 :
+                logits, _, past_key_values = self.model.inference(
+                    input=input,
+                    input_sub=input_sub,
+                    position=position,
+                    context=context,
+                    sample_ids=sample_ids,
+                    num_segments=num_segments,
+                    segment=segment,
+                    segment_rel_offset=segment_rel_offset,
+                    segment_rel=segment_rel,
+                    ext_table_ids=ext_table_ids,
+                    ext_table_sub=ext_table_sub,
+                    past_key_values=None,
+                )
+            else:
+                logits, _, past_key_values = self.model.inference(
+                    input=input[:, -1:],
+                    input_sub=torch.zeros(
+                        batch_size, dtype=torch.int32, device="cuda"
+                    ).view(batch_size, 1),
+                    position=position,
+                    context=torch.ones(
+                        batch_size, dtype=torch.bool, device="cuda"
+                    ).view(batch_size, 1),
+                    sample_ids=torch.zeros(
+                        batch_size, dtype=torch.int32, device="cuda"
+                    ).view(batch_size, 1),
+                    num_segments=num_segments[:, -1:],
+                    segment=segment,
+                    segment_rel_offset=segment_rel_offset[:, -1:],
+                    segment_rel=segment_rel,
+                    ext_table_ids=ext_table_ids,
+                    ext_table_sub=ext_table_sub,
+                    past_key_values=past_key_values,
+                )
+
+            logits = logits[:, -1, :]
+            if i == 0:
+                logits[:, self.tokenizer.eos_id] = -float("inf")
+                logits[:, self.tokenizer.newline_id] = -float("inf")
+                segment = []
+                for idx in range(batch_size):
+                    segment.append(other_info[idx]["predict_segments"][0][0])
+                segment = torch.tensor(segment, dtype=torch.int32, device="cuda").view(batch_size, 1)
+                position = torch.zeros(
+                    batch_size, dtype=torch.int32, device="cuda"
+                ).view(batch_size, 1) - 1
+            if i == 1:
+                logits = logits.index_select(dim=-1, index=self.label2logit)
+                probs = F.softmax(logits, dim=-1)
+                logits[self.feasible_state == 0] = -100
+                if self.ban_down:
+                    logits[0, 0] = -100
+                if self.ban_abstract:
+                    logits[0, 3] = -100
+                if self.ban_up:
+                    logits[0, 1] = -100
+                if self.ban_search:
+                    logits[0, 9] = -100
+                if self.ban_finish:
+                    logits[0, 8] = -100
+                if self.ban_go_back:
+                    logits[0, 2] = -100
+                topk = torch.topk(logits, 6)[1].cpu().numpy().tolist()[0]
+                sample_dist = True
+                if sample_dist == True and self.step_id > 0:
+                    next_action_id = torch.multinomial(probs, 1).cpu().numpy().tolist()[0][0]
+                    rep_num = 0
+                    while next_action_id not in topk:
+                        rep_num += 1
+                        if rep_num >= 100:
+                            break
+                        next_action_id = torch.multinomial(probs, 1).cpu().numpy().tolist()[0][0]
+                else:
+                    next_action_id = logits.argmax(dim=-1).cpu().numpy().tolist()[0]
+                raw_token = torch.tensor([self.label2logit[next_action_id]])
+                #print(1, raw_token)
+            else:
+                apply_repetition_penalty(
+                    logits,
+                    batch_size,
+                    1,
+                    input,
+                    repetition_penalty,
+                    pred_start_index,
+                    input.size(-1) - 1,
+                    repetition_window,
+                )
+
+                logits = logits / temperature
+                logits = top_k_top_p_filtering(logits, top_k=top_k, top_p=top_p)
+                probs = F.softmax(logits, dim=-1)
+                raw_token = torch.multinomial(probs, num_samples=1)
+                #print(0,raw_token)
+            
+            next_token = torch.zeros(
+                batch_size, dtype=torch.int32, device="cuda"
+            ).view(batch_size, 1)
+            next_token_sub = torch.zeros(
+                batch_size, dtype=torch.int32, device="cuda"
+            ).view(batch_size, 1)
+            
+
+            for idx in range(batch_size):
+                if not done[idx] and (
+                    raw_token[idx].item() == self.tokenizer.eos_id or i == max_length - 1
+                ):
+                    done[idx] = True
+                    results[idx] = input[idx, pred_start_index:].clone().cpu().tolist()  # type: ignore # noqa: E501
+                if not done[idx]:
+                    if i == 0:
+                        next_token[idx][0] = self.tokenizer.bos_id
+                    else:
+                        next_token[idx][0] = int(raw_token[idx].item())
+                        if next_token[idx][0] >= self.tokenizer.vocab_size:
+                            id = next_token[idx][0] - self.tokenizer.vocab_size
+                            next_token[idx][0] = int(ext_table_ids_cpu[id].item())
+                            next_token_sub[idx][0] = int(ext_table_sub_cpu[id].item())
+
+            if sum(done) == batch_size:
+                break
+
+            # update input ids
+            input = torch.cat([input, next_token], dim=-1)
+            input_sub = torch.cat([input_sub, next_token_sub], dim=-1)
+            position = position[:, -1:] + 1
+        
+        result_text = []
+        for idx in range(batch_size):
+            result_text.append([(word, 1)for word in list(results[idx][1:])])
+        return result_text

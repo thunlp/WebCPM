@@ -237,7 +237,9 @@ export BING_SEARCH_KEY="**Your Bing Search API Key**"
 
 ### 互动式网页搜索
 
-即将推出。
+```bash
+python run_interactive.py --data_path predictions/test_interactive.json --ckpt_path **your-checkpoint**
+```
 
 ### 流水线式网页搜索
 

@@ -246,7 +246,9 @@ export BING_SEARCH_KEY="**Your Bing Search API Key**"
 
 ### Interactive Web Search
 
-Coming soon.
+```bash
+python run_interactive.py --data_path predictions/test_interactive.json --ckpt_path **your-checkpoint**
+```
 
 ### Pipeline-based Web Search
 

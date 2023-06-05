@@ -96,6 +96,10 @@ class CPMBeeTokenizer(object):
     @property
     def unk_id(self):
         return self.encoder[self.unk_token]
+    
+    @property
+    def newline_id(self):
+        return self.encoder["\n"]
 
     @property
     def mask_id(self):

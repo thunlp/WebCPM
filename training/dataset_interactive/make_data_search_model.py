@@ -4,10 +4,11 @@ from tokenizer import CPM3Tokenizer
 from cpm_live.dataset import build_dataset
 import os
 import argparse
+import torch
 import random
 
-class WebGPT_Dataset:
-    def __init__(self, path, split, add_query, add_abstract, abstract_all_tokens, add_action):
+class WebGPT_Dataset(torch.utils.data.Dataset):
+    def __init__(self, path, split, add_query, add_abstract, abstract_all_tokens, add_action, write_file):
         path = f"{path}/{split}.json"
         self.add_query = add_query
         self.add_abstract = add_abstract
@@ -141,8 +142,7 @@ class WebGPT_Dataset:
                     if in_page:
                         banned_actions = ['RECORD_START', 'LOAD_PAGE_DETAIL-0', 'LOAD_PAGE_DETAIL-2', 'LOAD_PAGE_DETAIL-1']
                     else:
-                        # should ban MERGE_DIGEST, fix later
-                        banned_actions = ['RECORD_START', 'ADD_DIGEST']
+                        banned_actions = ['RECORD_START', 'MERGE_DIGEST', 'ADD_DIGEST', 'PAGE_GO_BACK']
                     next_feasible_state = self.ban_action(banned_actions)
                 elif action_name == "TRIGGER_SCROLL_UP":
                     info_dict["next_action"] = self.action_start2idx[action_name]
@@ -157,7 +157,7 @@ class WebGPT_Dataset:
                     if in_page:
                         banned_actions = ['RECORD_START', 'LOAD_PAGE_DETAIL-0', 'LOAD_PAGE_DETAIL-2', 'LOAD_PAGE_DETAIL-1']
                     else:
-                        banned_actions = ['RECORD_START', 'ADD_DIGEST', 'MERGE_DIGEST']
+                        banned_actions = ['RECORD_START', 'MERGE_DIGEST', 'ADD_DIGEST', 'PAGE_GO_BACK']
                     next_feasible_state = self.ban_action(banned_actions)
                 elif action_name == "MERGE_DIGEST":
                     info_dict["next_action"] = self.action_start2idx[action_name]
@@ -177,7 +177,7 @@ class WebGPT_Dataset:
                     info_dict["next_action"] = self.action_start2idx[action_name]
                     past_action = self.action2idx["PAGE_GO_BACK"] + "；"
                     in_page = False
-                    banned_actions = ['RECORD_START', 'ADD_DIGEST', 'MERGE_DIGEST']
+                    banned_actions = ['RECORD_START', 'ADD_DIGEST', 'MERGE_DIGEST', 'PAGE_GO_BACK']
                     next_feasible_state = self.ban_action(banned_actions)
                 elif action_name == "RECORD_CLOSE":
                     info_dict["next_action"] = self.action_start2idx[action_name]
@@ -195,7 +195,7 @@ class WebGPT_Dataset:
                     if in_page:
                         banned_actions = ['RECORD_START', 'LOAD_PAGE_DETAIL-0', 'LOAD_PAGE_DETAIL-2', 'LOAD_PAGE_DETAIL-1']
                     else:
-                        banned_actions = ['RECORD_START', 'ADD_DIGEST', 'MERGE_DIGEST']
+                        banned_actions = ['RECORD_START', 'ADD_DIGEST', 'MERGE_DIGEST', 'PAGE_GO_BACK']
                     next_feasible_state = self.ban_action(banned_actions)
                 else:
                     print("wrong action name, plz check here!")
@@ -211,12 +211,12 @@ class WebGPT_Dataset:
                     if self.add_query:
                         info_dict["next_action"] = search_query
                         context_ids, next_action = self.make_input(info_dict, type="query")
-                        self.data.append([context_ids, next_action])
+                        self.data.append([context_ids, next_action, next_feasible_state])
                         self.idx += 1
                     if self.add_action:
                         info_dict["next_action"] = act
                         context_ids, next_action = self.make_input(info_dict, type="action")
-                        self.data.append([context_ids, next_action])
+                        self.data.append([context_ids, next_action, next_feasible_state])
                         self.idx += 1
                 elif action_name == "ADD_DIGEST":
                     act = info_dict["next_action"][0]
@@ -224,54 +224,56 @@ class WebGPT_Dataset:
                     if self.add_abstract:
                         info_dict["next_action"] = abstract
                         context_ids, next_action = self.make_input(info_dict, type="abstract")
-                        self.data.append([context_ids, next_action])
+                        self.data.append([context_ids, next_action, next_feasible_state])
                         self.idx += 1
                     if self.add_action:
                         info_dict["next_action"] = act
                         context_ids, next_action = self.make_input(info_dict, type="action")
-                        self.data.append([context_ids, next_action])
+                        self.data.append([context_ids, next_action, next_feasible_state])
                         self.idx += 1
                 elif self.add_action:
                     context_ids, next_action = self.make_input(info_dict, type="action")
-                    self.data.append([context_ids, next_action])
+                    self.data.append([context_ids, next_action, next_feasible_state])
                     self.idx += 1
                 
                 info_dict["actions_left"] -= 1
         print(self.action_num)
-        with open('{}_search.txt'.format(split), 'w') as fout:
-            for item in self.data:
-                src_line = item[0]
-                tgt_line = item[1]
-                src_line = src_line.strip()
-                tgt_line = tgt_line.strip()
-                src_line = src_line.replace(" ", "")
-                tgt_line = tgt_line.replace(" ", "")
-                # replacing `<` with `<<` is required in the tokenization process of CPMB model.
-                src_line = re.sub('<', '<<', src_line)
-                tgt_line = re.sub('<', '<<', tgt_line)
-                fout.write(json.dumps({'source': src_line, '<ans>': tgt_line}, ensure_ascii=False) + '\n')
 
-        fin = open('{}_search.txt'.format(split), 'r', encoding='utf-8')
-        lines = fin.readlines()
-        fin.close()
+        if write_file:
+            with open('{}_search.txt'.format(split), 'w') as fout:
+                for item in self.data:
+                    src_line = item[0]
+                    tgt_line = item[1]
+                    src_line = src_line.strip()
+                    tgt_line = tgt_line.strip()
+                    src_line = src_line.replace(" ", "")
+                    tgt_line = tgt_line.replace(" ", "")
+                    # replacing `<` with `<<` is required in the tokenization process of CPMB model.
+                    src_line = re.sub('<', '<<', src_line)
+                    tgt_line = re.sub('<', '<<', tgt_line)
+                    fout.write(json.dumps({'source': src_line, '<ans>': tgt_line}, ensure_ascii=False) + '\n')
 
-        if args.add_synthesis:
-            # You should first execute make_data_synthesis_model.py to obtain the txt files needed for answer synthesis.
-            print("adding data from the synthesis model")
-            fin = open('{}_synthesis.txt'.format(split), 'r', encoding='utf-8')
-            lines += fin.readlines()
+            fin = open('{}_search.txt'.format(split), 'r', encoding='utf-8')
+            lines = fin.readlines()
             fin.close()
-        random.shuffle(lines)
 
-        write_path = "./{}_data".format(split)
-        if not os.path.exists(write_path):
-            os.makedirs(write_path)
+            if args.add_synthesis:
+                # You should first execute make_data_synthesis_model.py to obtain the txt files needed for answer synthesis.
+                print("adding data from the synthesis model")
+                fin = open('{}_synthesis.txt'.format(split), 'r', encoding='utf-8')
+                lines += fin.readlines()
+                fin.close()
+            random.shuffle(lines)
 
-        # the write_path directory should contain no files
-        with build_dataset(write_path, "data") as dataset:
-            for data in lines:
-                data = json.loads(data)
-                dataset.write(data)
+            write_path = "./{}_data".format(split)
+            if not os.path.exists(write_path):
+                os.makedirs(write_path)
+
+            # the write_path directory should contain no files
+            with build_dataset(write_path, "data") as dataset:
+                for data in lines:
+                    data = json.loads(data)
+                    dataset.write(data)
 
 
     def make_input(self, info_dict, type="action"):
@@ -343,4 +345,4 @@ if __name__ == "__main__":
 
     # put your data at args.data_path
     for data_type in ["train", "dev", "test"]:
-        _ = WebGPT_Dataset(args.data_path, data_type, add_query = args.add_query, add_abstract = args.add_abstract, abstract_all_tokens = args.abstract_all_tokens, add_action=args.add_action)
+        _ = WebGPT_Dataset(args.data_path, data_type, add_query = args.add_query, add_abstract = args.add_abstract, abstract_all_tokens = args.abstract_all_tokens, add_action=args.add_action, write_file=True)
